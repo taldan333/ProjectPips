@@ -54,6 +54,7 @@ input double                  PP_Breakeven_LockIn = 10;            // Pips to Lo
 
 static input string           PP_FILTER_Settings = "-----------";  // -------- SIGNAL FILTER SETTINGS --------
 input bool                    PP_ADX_Flag = True;                  // ADX Toggle
+input int                     PP_ADX_Period = 14;                  // ADX Period
 input int                     PP_ADXmin = 20;                      // ADX Min
 input bool                    PP_MACD_Flag = False;                // MACD Toggle
 input bool                    PP_SAR_Flag = False;                 // SAR Toggle
@@ -169,31 +170,14 @@ int start()
       }
    
 
-/*/--------NEW CODE HERE-----------
-   if (!openOrder)
-   {
-      if ((PP_Signal_BuyCount > PP_Signal_Required) && (buySignal1==true))       
-        {
-          placeBuy();
-          PP_Trailing_Flag();
-          
-          }
-      else if ((PP_Signal_SellCount > PP_Signal_Required) && (sellSignal1==true))
-         {
-         placeSell();
-         PP_Trailing_Flag();
-         
-         }
-   }
-*///--------NEW CODE HERE-----------
+//--------NEW CODE HERE-----------
    if (!openOrder)
    {
    Print("Signal required=", PP_Signal_Required);
    Print("Buy count=", PP_Signal_BuyCount);
    Print("Sell count=", PP_Signal_SellCount);
       if (PP_Signal_Required == 0 && buySignal1==true)
-        {
-           
+        {          
            placeBuy();
            PP_Trailing_Flag();
         }
@@ -213,8 +197,6 @@ int start()
            PP_Trailing_Flag();
         }    
    }
-
-
 
 
    return(0);
@@ -320,33 +302,40 @@ void generateSignals()
    
    
 //--------SIGNAL GENERATION-----------
+   
+   
+   if (PP_Signal_Required>0)
+   {
+   
    if (PP_ADX_Flag) 
    {
-         if (iADX(NULL,0,14,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
+      if (iADX(NULL,0,PP_ADX_Period,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
          {
          PP_Signal_BuyCount++;
          }
-      if (iADX(NULL,0,14,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
+      else if (iADX(NULL,0,PP_ADX_Period,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
          {
          PP_Signal_SellCount++;
          }
    }      
-   
-   if (PP_MACD_Flag) PP_MACD_Function();
-   if (PP_SAR_Flag) PP_SAR_Function();
    
    if (PP_RSI_Flag)
    {
-      if(iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,0)<=PP_RSI_Buy);
+      if((iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,1)<PP_RSI_Buy))
          {
          PP_Signal_BuyCount++;
          }
-      if(iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,0)>=PP_RSI_Sell);
+      else if((iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,1)>PP_RSI_Sell))
          {
          PP_Signal_SellCount++;
          }   
-   }      
-         
+   }
+   if (PP_MACD_Flag) PP_MACD_Function();
+   if (PP_SAR_Flag) PP_SAR_Function();      
+    
+   }
+   
+        
 //--------SIGNAL GENERATION-----------   
    
 
