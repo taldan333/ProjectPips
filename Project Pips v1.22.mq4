@@ -6,62 +6,82 @@
 
 enum PP_MM 
   {
-   ppOff=0,     // Off
-   ppSL=1,     // Risk % Stop Loss
-   ppTR=2,     // Risk % Trailing
-   ppSET=3,    // 0.01 Per $100
-   ppEQ=4,     // Risk % Balance
+   ppOff=0,       // Off
+   ppSL=1,        // Risk % Stop Loss
+   ppTR=2,        // Risk % Trailing
+   ppSET=3,       // 0.01 Per $100
+   ppEQ=4,        // Risk % Balance
   };
+  
+enum PP_Shift
+   {
+   ppCurrent=0,   // Current Open Bar
+   ppPrev=1,      // Previous Bar
+   };
 
 //+------------------------------------------------------------------+
 //| Input Parameters                                                 |
 //+------------------------------------------------------------------+
 
 static input int              PP_MagicNumber = 91273;              // Magic Number
-static input string           PP_STANDARD_Settings = "-----------";// -------- STANDARD SETTINGS --------
+static input string           PP_STANDARD_Settings = "-----------";// =====> STANDARD SETTINGS <=====
 extern double                 PP_Lot_Size = 0.01;                  // Lot Size
 input double                  PP_Lot_Max = 10;                     // Max Lot Size
 input double                  PP_TakeProfit = 0;                   // Take Profit
 input double                  PP_StopLoss = 50;                    // Stop Loss
 input int                     PP_Slippage = 3;                     // Max Slippage
 
-static input string           PP_MM_Settings = "-----------";      // -------- MONEY MANAGEMENT SETTINGS --------
+static input string           PP_MM_Settings = "-----------";      // =====> MONEY MANAGEMENT <=====
 input double                  PP_Risk = 7;                         // Risk %
 input PP_MM                   PP_MM_Type = 0;                      // MM Type
 
-static input string           PP_MAFAST_Settings = "-----------";  // -------- FAST MOVING SETTINGS --------
+static input string           PP_MAFAST_Settings = "-----------";  // =====> FAST MOVING AVERAGE <=====
 input ENUM_TIMEFRAMES         PP_MA_Fast_Time = 0;                 // Time Frame
 input int                     PP_MA_Fast_Period = 7;               // Fast Period
 input ENUM_MA_METHOD          PP_MA_Fast_Method = MODE_LWMA;       // Averaging Method
 input ENUM_APPLIED_PRICE      PP_MA_Fast_Price = PRICE_CLOSE;      // Applied Price
 
-static input string           PP_MASLOW_Settings = "-----------";  // -------- SLOW MOVING SETTINGS --------
+static input string           PP_MASLOW_Settings = "-----------";  // =====> SLOW MOVING AVERAGE <=====
 input ENUM_TIMEFRAMES         PP_MA_Slow_Time = 0;                 // Time Frame
 input int                     PP_MA_Slow_Period = 21;              // Slow Period
 input ENUM_MA_METHOD          PP_MA_Slow_Method = MODE_LWMA;       // Averaging Method
 input ENUM_APPLIED_PRICE      PP_MA_Slow_Price = PRICE_WEIGHTED;   // Applied Price
 
-static input string           PP_TRAIL_Settings = "-----------";   // -------- TRAILING STOP SETTINGS --------
+static input string           PP_TRAIL_Settings = "-----------";   // =======> TRAILING STOP <=======
 input bool                    PP_Trailing_Flag = False;            // Trailing Order
 input double                  PP_Trailing_Stop = 20;               // Trailing Stop
 input int                     PP_Trailing_Step = 5;                // Trailing Step
 input double                  PP_Trailing_Start = 0;               // When to Trail
 
-static input string           PP_BREAKEVEN_Settings ="-----------";// -------- BREAK EVEN SETTINGS --------
+static input string           PP_BREAKEVEN_Settings ="-----------";// ========> BREAK EVEN <=========
 input bool                    PP_Breakeven_Flag = False;           // Breakeven Order
 input double                  PP_Breakeven_Point = 20;             // Breakeven Point
 input double                  PP_Breakeven_LockIn = 10;            // Pips to Lock in
 
-static input string           PP_FILTER_Settings = "-----------";  // -------- SIGNAL FILTER SETTINGS --------
+static input string           PP_FILTER_Settings = "-----------";  // ####### FILTER SETTINGS #######
+
+static input string           PP_ADX_Settings = "-----------";     // =========> ADX FILTER <=========
 input bool                    PP_ADX_Flag = True;                  // ADX Toggle
+input ENUM_TIMEFRAMES         PP_ADX_Time = 0;                     // ADX Time Frame
 input int                     PP_ADX_Period = 14;                  // ADX Period
+input ENUM_APPLIED_PRICE      PP_ADX_Price = 0;                    // ADX Applied Price
 input int                     PP_ADXmin = 20;                      // ADX Min
+input PP_Shift                PP_ADX_Shift =1;                     // ADX Shift
+
+static input string           PP_MACD_Settings = "-----------";    // =========> MACD FILTER <========
 input bool                    PP_MACD_Flag = False;                // MACD Toggle
+
+static input string           PP_SAR_Settings = "-----------";     // =========> SAR FILTER <=========
 input bool                    PP_SAR_Flag = False;                 // SAR Toggle
+
+static input string           PP_RSI_Settings = "-----------";     // =========> RSI FILTER <=========
 input bool                    PP_RSI_Flag = False;                 // RSI Toggle
+input ENUM_TIMEFRAMES         PP_RSI_Time = 0;                     // RSI Time Frame 
 input int                     PP_RSI_Period = 14;                  // RSI Period
+input ENUM_APPLIED_PRICE      PP_RSI_Price = 0;                    // RSI Applied Price
 input int                     PP_RSI_Sell = 70;                    // RSI Sell Signal
 input int                     PP_RSI_Buy = 30;                     // RSI Buy Signal
+input PP_Shift                PP_RSI_Shift = 1;                    // RSI Shift
 
 
 //+------------------------------------------------------------------+
@@ -181,12 +201,12 @@ int start()
            placeBuy();
            PP_Trailing_Flag();
         }
-      else if ((PP_Signal_BuyCount >= PP_Signal_Required) && (buySignal1==true))       
+      else if ((PP_Signal_BuyCount == PP_Signal_Required) && (buySignal1==true))       
         {
            placeBuy();
            PP_Trailing_Flag();
         }
-      else if ((PP_Signal_SellCount >= PP_Signal_Required) && (sellSignal1==true))
+      else if ((PP_Signal_SellCount == PP_Signal_Required) && (sellSignal1==true))
         {
            placeSell();
            PP_Trailing_Flag();
@@ -309,11 +329,11 @@ void generateSignals()
    
    if (PP_ADX_Flag) 
    {
-      if (iADX(NULL,0,PP_ADX_Period,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
+      if (iADX(NULL,PP_ADX_Time,PP_ADX_Period,PP_ADX_Price,MODE_MAIN,PP_ADX_Shift) > PP_ADXmin)
          {
          PP_Signal_BuyCount++;
          }
-      else if (iADX(NULL,0,PP_ADX_Period,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
+      else if (iADX(NULL,PP_ADX_Time,PP_ADX_Period,PP_ADX_Price,MODE_MAIN,PP_ADX_Shift) > PP_ADXmin)
          {
          PP_Signal_SellCount++;
          }
@@ -321,11 +341,11 @@ void generateSignals()
    
    if (PP_RSI_Flag)
    {
-      if((iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,1)<PP_RSI_Buy))
+      if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)<PP_RSI_Buy))
          {
          PP_Signal_BuyCount++;
          }
-      else if((iRSI(NULL,0,PP_RSI_Period,PRICE_CLOSE,1)>PP_RSI_Sell))
+      else if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)>PP_RSI_Sell))
          {
          PP_Signal_SellCount++;
          }   
