@@ -141,8 +141,7 @@ int start()
       if (PP_MACD_Flag)PP_Signal_Required++;
       if (PP_SAR_Flag)PP_Signal_Required++;
       if (PP_RSI_Flag)PP_Signal_Required++;
-      if (PP_PullBack_Long_Flag)PP_Signal_Required++;
-      if (PP_PullBack_Short_Flag)PP_Signal_Required++;
+
                
    }
 //---- END Signal Required Counter----  
@@ -211,31 +210,31 @@ int start()
 //--------NEW CODE HERE-----------
    if (!openOrder)
    {
-   Print("Signal required=", PP_Signal_Required);
-   Print("Buy count=", PP_Signal_BuyCount);
-   Print("Sell count=", PP_Signal_SellCount);
-      
+//   Print("Signal required=", PP_Signal_Required);
+//   Print("Buy count=", PP_Signal_BuyCount);
+//   Print("Sell count=", PP_Signal_SellCount);
       if (PP_Signal_Required == 0 && buySignal1==true)
-         placeBuy();
-
-      else if ((PP_Signal_BuyCount == PP_Signal_Required) && (buySignal1==true))       
+        {          
+           placeBuy();
+        }
+      if ((PP_Signal_BuyCount == PP_Signal_Required) && (buySignal1==true))       
         {
            if (PP_PullBack_Long_Flag)
                PP_PullBack_Buy();
             else 
                placeBuy();
         }
-      else if ((PP_Signal_SellCount == PP_Signal_Required) && (sellSignal1==true))
+      if ((PP_Signal_SellCount == PP_Signal_Required) && (sellSignal1==true))
         {
            if (PP_PullBack_Short_Flag) 
                PP_PullBack_Sell();
             else 
                placeSell();
         }
-      else if (PP_Signal_Required == 0 && sellSignal1==true) 
-         placeSell();   
-           
-            
+      if (PP_Signal_Required == 0 && sellSignal1==true)
+        {             
+           placeSell();
+        }    
    }
 
 
@@ -264,7 +263,8 @@ void placeBuy()
          OrderSelect(result,SELECT_BY_TICKET);
          OrderModify(OrderTicket(),OrderOpenPrice(),NormalizeDouble(TheStopLoss,Digits),NormalizeDouble(TheTakeProfit,Digits),0,Green);
         }
-        
+   if (PP_Trailing_Flag) PP_Trailing_Flag();
+   if (PP_Breakeven_Flag) PP_Breakeven_Flag();        
 }
 
 //+------------------------------------------------------------------+
@@ -289,7 +289,8 @@ void placeSell()
          OrderSelect(result,SELECT_BY_TICKET);
          OrderModify(OrderTicket(),OrderOpenPrice(),NormalizeDouble(TheStopLoss,Digits),NormalizeDouble(TheTakeProfit,Digits),0,Green);
         }
-       
+   if (PP_Trailing_Flag) PP_Trailing_Flag();
+   if (PP_Breakeven_Flag) PP_Breakeven_Flag();       
 }
 
 //+------------------------------------------------------------------+
@@ -349,25 +350,24 @@ void generateSignals()
 //----------ADX FILTER---------------   
    if (PP_ADX_Flag) 
    {
-      if (iADX(NULL,PP_ADX_Time,PP_ADX_Period,PP_ADX_Price,MODE_MAIN,PP_ADX_Shift) > PP_ADXmin)
+      if (iADX(NULL,PP_ADX_Time,PP_ADX_Period,PP_ADX_Price,MODE_MAIN,PP_ADX_Shift) >= PP_ADXmin)
          {
          PP_Signal_BuyCount++;
-         }
-      else if (iADX(NULL,PP_ADX_Time,PP_ADX_Period,PP_ADX_Price,MODE_MAIN,PP_ADX_Shift) > PP_ADXmin)
-         {
          PP_Signal_SellCount++;
          }
-   }      
+
+   } 
+  
 //----------ADX FILTER--------------- 
 
 //----------RSI FILTER---------------    
    if (PP_RSI_Flag)
    {
-      if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)<PP_RSI_Buy))
+      if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)<=PP_RSI_Buy))
          {
          PP_Signal_BuyCount++;
          }
-      else if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)>PP_RSI_Sell))
+      if((iRSI(NULL,PP_RSI_Time,PP_RSI_Period,PP_RSI_Price,PP_RSI_Shift)>=PP_RSI_Sell))
          {
          PP_Signal_SellCount++;
          }   
@@ -381,7 +381,7 @@ void generateSignals()
          {
          PP_Signal_BuyCount++;
          }
-      else if (iMACD(NULL,PP_MACD_Time,PP_MACD_Fast,PP_MACD_Slow,PP_MACD_Signal,PP_MACD_Price,MODE_MAIN,PP_MACD_Shift) < 0)
+      if (iMACD(NULL,PP_MACD_Time,PP_MACD_Fast,PP_MACD_Slow,PP_MACD_Signal,PP_MACD_Price,MODE_MAIN,PP_MACD_Shift) < 0)
          {
          PP_Signal_SellCount++;
          }
@@ -395,7 +395,7 @@ void generateSignals()
          {
          PP_Signal_BuyCount++;
          }
-      else if(iSAR(NULL,PP_SAR_Time,PP_SAR_Step,PP_SAR_MaxStep,PP_SAR_Shift)>Ask)
+      if(iSAR(NULL,PP_SAR_Time,PP_SAR_Step,PP_SAR_MaxStep,PP_SAR_Shift)>Ask)
          {
          PP_Signal_SellCount++;
          }
@@ -499,86 +499,6 @@ for(int i =0;i<OrdersTotal();i++)
       }  
    }
 }
-
-//+------------------------------------------------------------------+
-//|                     COUNT SIGNAL REQUIREMENT                     |
-//+------------------------------------------------------------------+
-
-/*int PP_Signal_Required()
-   {
-   int sigReq = 0;
-   if (PP_ADX_Flag)
-      {
-      sigReq++;
-      }
-   if (PP_MACD_Flag)
-      {
-      sigReq++;
-      }
-   if (PP_SAR_Flag)
-      {
-      sigReq++;
-      }
-     
-   return (sigReq);
-   }
-            
-
-*/
-
-
-
-//+------------------------------------------------------------------+
-//|                     ADX FUNCTION                                 |
-//+------------------------------------------------------------------+   
-void PP_ADX_Function()
-   {
-   
-      if (iADX(NULL,0,14,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
-         {
-         PP_Signal_BuyCount++;
-         }
-      if (iADX(NULL,0,14,PRICE_CLOSE,MODE_MAIN,1) > PP_ADXmin)
-         {
-         PP_Signal_SellCount++;
-         }
-   }      
-
-
-
-
-
-
-
-
-
-
-//+------------------------------------------------------------------+
-//|                     MACD FUNCTION                                |
-//+------------------------------------------------------------------+   
-void PP_MACD_Function()
-{
-}
-
-
-
-
-
-
-
-
-
-
-
-//+------------------------------------------------------------------+
-//|                     SAR FUNCTION                                 |
-//+------------------------------------------------------------------+ 
-void PP_SAR_Function()
-{
-}
-
-
-
 
 
 
