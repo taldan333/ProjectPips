@@ -30,6 +30,8 @@ input double                  PP_Lot_Max = 10;                     // Max Lot Si
 input double                  PP_TakeProfit = 0;                   // Take Profit
 input double                  PP_StopLoss = 50;                    // Stop Loss
 input int                     PP_Slippage = 3;                     // Max Slippage
+input bool                    PP_Reverse = False;                  // Reverse on Opposite Cross
+input bool                    PP_Close_Signal = True;              // Close on Opposite Cross
 
 static input string           PP_MM_Settings = "-----------";      // =====> MONEY MANAGEMENT <=====
 input double                  PP_Risk = 7;                         // Risk %
@@ -61,7 +63,7 @@ input double                  PP_Breakeven_LockIn = 10;            // Pips to Lo
 static input string           PP_FILTER_Settings = "-----------";  // ####### FILTER SETTINGS #######
 
 static input string           PP_ADX_Settings = "-----------";     // =========> ADX FILTER <=========
-input bool                    PP_ADX_Flag = True;                  // ADX Toggle
+input bool                    PP_ADX_Flag = False;                  // ADX Toggle
 input ENUM_TIMEFRAMES         PP_ADX_Time = 0;                     // ADX Time Frame
 input int                     PP_ADX_Period = 14;                  // ADX Period
 input ENUM_APPLIED_PRICE      PP_ADX_Price = 0;                    // ADX Applied Price
@@ -109,9 +111,15 @@ int PP_Signal_SellCount =0;
 
 int counter;
 bool openOrder;
-bool buySignal1, buySignal2;
-bool sellSignal1, sellSignal2;
+bool buySignal1 = False;
+bool buySignal2 = False;
+bool buySignal3 = False;
+bool sellSignal1 = False;
+bool sellSignal2 = False;
+bool sellSignal3 = False;
 bool debug = false;
+datetime LastActiontime;
+
 
 //+------------------------------------------------------------------+
 //|        INITIALIZATION FUNCTION                                   |
@@ -181,27 +189,39 @@ int start()
          openOrder = true;
         }
          //check for closing signals
-         if (OrderType() == OP_BUY && sellSignal1)
+         if (OrderType() == OP_BUY && sellSignal1 && PP_Close_Signal)
             {
             closeBuyTrade();
             openOrder = false;
             }
         
-         if (OrderType() == OP_SELL && buySignal1)
+         else if (OrderType() == OP_SELL && buySignal1 && PP_Close_Signal)
             {
             closeSellTrade();
             openOrder = false;
             }
-         if (OrderType() == OP_BUYLIMIT && sellSignal1)
+         else if (OrderType() == OP_BUYLIMIT && sellSignal1)
             {
             DeletePendingOrder();
             openOrder = false;
             }   
-         if (OrderType() == OP_SELLLIMIT && buySignal1)
+         else if (OrderType() == OP_SELLLIMIT && buySignal1)
             {
             DeletePendingOrder();
             openOrder = false;
-            }            
+            }
+         else if (OrderType() == OP_SELL && buySignal3 && PP_Reverse)
+            {
+            closeSellTrade();
+            openOrder = false;
+            placeBuy();
+            }
+         else if (OrderType() == OP_BUY && sellSignal3 && PP_Reverse)
+            {
+            closeBuyTrade();
+            openOrder = false;
+            placeSell();
+            }                        
         
 
       }
@@ -210,26 +230,32 @@ int start()
 //--------NEW CODE HERE-----------
    if (!openOrder)
    {
-//   Print("Signal required=", PP_Signal_Required);
-//   Print("Buy count=", PP_Signal_BuyCount);
-//   Print("Sell count=", PP_Signal_SellCount);
+
       if (PP_Signal_Required == 0 && buySignal1==true)
         {          
            placeBuy();
         }
-      if ((PP_Signal_BuyCount == PP_Signal_Required) && (buySignal1==true))       
+      if ((PP_Signal_BuyCount == PP_Signal_Required) && (buySignal1==true) && PP_Signal_Required>0)       
         {
-           if (PP_PullBack_Long_Flag)
+           if (PP_PullBack_Long_Flag && !openOrder)
+            {
                PP_PullBack_Buy();
-            else 
+            }
+            else
+            {
                placeBuy();
+            }
         }
-      if ((PP_Signal_SellCount == PP_Signal_Required) && (sellSignal1==true))
+      if ((PP_Signal_SellCount == PP_Signal_Required) && (sellSignal1==true) && PP_Signal_Required>0)
         {
            if (PP_PullBack_Short_Flag) 
+            {
                PP_PullBack_Sell();
+            }   
             else 
+            {
                placeSell();
+            }   
         }
       if (PP_Signal_Required == 0 && sellSignal1==true)
         {             
@@ -237,7 +263,7 @@ int start()
         }    
    }
 
-
+ 
    return(0);
 }
 
@@ -263,8 +289,6 @@ void placeBuy()
          OrderSelect(result,SELECT_BY_TICKET);
          OrderModify(OrderTicket(),OrderOpenPrice(),NormalizeDouble(TheStopLoss,Digits),NormalizeDouble(TheTakeProfit,Digits),0,Green);
         }
-   if (PP_Trailing_Flag) PP_Trailing_Flag();
-   if (PP_Breakeven_Flag) PP_Breakeven_Flag();        
 }
 
 //+------------------------------------------------------------------+
@@ -289,8 +313,6 @@ void placeSell()
          OrderSelect(result,SELECT_BY_TICKET);
          OrderModify(OrderTicket(),OrderOpenPrice(),NormalizeDouble(TheStopLoss,Digits),NormalizeDouble(TheTakeProfit,Digits),0,Green);
         }
-   if (PP_Trailing_Flag) PP_Trailing_Flag();
-   if (PP_Breakeven_Flag) PP_Breakeven_Flag();       
 }
 
 //+------------------------------------------------------------------+
@@ -322,6 +344,8 @@ void generateSignals()
    sellSignal1 = false;
    buySignal2 = false;
    sellSignal2 = false;
+   buySignal3 = false;
+   sellSignal3 = false;
    PP_Signal_BuyCount =0;
    PP_Signal_SellCount =0;  
    
@@ -340,7 +364,21 @@ void generateSignals()
   {
       sellSignal1 = true;
    }   
-   
+  
+   //fast MA less than slow MA on open of candle only
+  if (LastActiontime!=Time[0] && PP_Reverse == True) 
+{
+  if (MAFastCurrent < MASlowCurrent) 
+   {
+     sellSignal3 = true;
+    }
+   //fast MA greater than slow MA on open of candle only
+   else if (MAFastCurrent > MASlowCurrent) 
+   {
+    buySignal3 = true;
+    }
+   LastActiontime = Time[0];
+ }  
    
 //--------SIGNAL FILTER START-----------
    
